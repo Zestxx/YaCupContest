@@ -1,3 +1,5 @@
 package com.zestxx.yacupcontest
 
-class Frame(val data: List<DrawablePath> = emptyList())
+class Frame(
+    val data: List<DrawablePath> = emptyList()
+)

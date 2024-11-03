@@ -1,15 +1,23 @@
 package com.zestxx.yacupcontest
 
+import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement.Absolute.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -24,7 +33,6 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -42,58 +51,65 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
-import com.zestxx.yacupcontest.composnents.LineThicknessSlider
 import com.zestxx.yacupcontest.ui.theme.Colors
+
+fun Modifier.bindToCanvas(canvasState: CanvasState): Modifier {
+    return this.pointerInput(true) {
+        detectDragGestures(
+            onDragStart = { offset -> canvasState.startPoint(offset.x, offset.y) },
+            onDrag = { change, dragAmount ->
+                canvasState.updateLine(change.position.x, change.position.y)
+            },
+            onDragEnd = { canvasState.saveStep() }
+        )
+    }
+}
+
+@Composable
+fun Background(@DrawableRes bkgRes: Int, modifier: Modifier = Modifier) {
+    Image(
+        modifier = modifier,
+        painter = painterResource(bkgRes),
+        contentDescription = "Canvas",
+        contentScale = ContentScale.FillHeight
+    )
+}
 
 @Composable
 fun MainScreen(modifier: Modifier = Modifier) {
     val canvasState = rememberCanvasState()
     val stepsManager = remember { StepsManager(canvasState) }
-    val animator = remember { Animator() }
+    val animator = remember { Animator(stepsManager) }
     val coroutineScope = rememberCoroutineScope()
-    val playState by animator.frameFlow.collectAsState(null)
 
     Box(
         modifier
             .fillMaxSize()
-            .pointerInput(true) {
-                detectDragGestures(
-                    onDragStart = { offset -> canvasState.startPoint(offset.x, offset.y) },
-                    onDrag = { change, dragAmount ->
-                        canvasState.updateLine(change.position.x, change.position.y)
-                    },
-                    onDragEnd = { canvasState.saveStep() }
-                )
+            .bindToCanvas(canvasState)
+            .onPlaced {
+                canvasState.initSize(it.size)
             }
     ) {
-        Image(
+        Background(
+            R.drawable.bkg_canvas,
+            Modifier
+                .fillMaxSize()
+        )
+
+        AppCanvas(
             modifier = Modifier.fillMaxSize(),
-            painter = painterResource(R.drawable.bkg_canvas),
-            contentDescription = "Canvas",
-            contentScale = ContentScale.FillHeight
+            canvasState = canvasState,
         )
 
-        val canvasPath = if (animator.isPlaying) {
-            playState?.data ?: emptyList<DrawablePath>()
-        } else {
-            canvasState.canvasPathList
-        }
-
-        CurrentFrame(
-            modifier = Modifier
-                .fillMaxSize(),
-            pathList = canvasPath,
-            actualPath = canvasState.currentPath
-        )
-
-        if (!animator.isPlaying) {
-            PreviewFrame(
-                modifier = Modifier
-                    .fillMaxSize(),
+        AnimatedVisibility(!animator.isPlaying, enter = fadeIn(), exit = fadeOut()) {
+            BackFrame(
+                modifier = Modifier.fillMaxSize(),
                 backFrame = stepsManager.backFrame
             )
         }
@@ -109,7 +125,6 @@ fun MainScreen(modifier: Modifier = Modifier) {
                         canvasState.mode = if (canvasState.mode == Mode.DRAW) {
                             Mode.ERASE
                         } else {
-                            animator.stop()
                             Mode.DRAW
                         }
                     }
@@ -138,12 +153,13 @@ fun MainScreen(modifier: Modifier = Modifier) {
                 Button(
                     onClick = {
                         if (!animator.isPlaying) {
-                            animator.play(stepsManager.getFrames(), coroutineScope)
+                            stepsManager.saveChanges()
+                            animator.play(coroutineScope)
                         } else {
                             animator.stop()
                         }
                     },
-                    enabled = stepsManager.getFrames().isNotEmpty()
+                    enabled = stepsManager.frameCount > 0
                 ) {
                     if (!animator.isPlaying) {
                         Text("Play")
@@ -169,25 +185,101 @@ fun MainScreen(modifier: Modifier = Modifier) {
             }
         }
         var thickness by remember { mutableFloatStateOf(Constants.MAX_LINE_WIDTH / 2) }
-        LineThicknessSlider(
-            thickness = thickness,
-            onThicknessChange = {
-                thickness = it
-                canvasState.lineWidth = Constants.MAX_LINE_WIDTH - it
+//        LineThicknessSlider(
+//            thickness = thickness,
+//            onThicknessChange = {
+//                thickness = it
+//                canvasState.lineWidth = Constants.MAX_LINE_WIDTH - it
+//            },
+//            minThickness = Constants.MIN_LINE_WIDTH,
+//            maxThickness = Constants.MAX_LINE_WIDTH,
+//            modifier = Modifier
+//                .align(Alignment.BottomStart)
+//                .padding(horizontal = 40.dp, vertical = 20.dp)
+//                .height(30.dp)
+//                .fillMaxWidth()
+//        )
+        FrameList(
+            frames = stepsManager.frames,
+            frameSize = canvasState.size,
+            selected = stepsManager.activeFrameIndex,
+            onClick = {
+                stepsManager.saveChanges()
+                stepsManager.showStep(it)
             },
-            minThickness = Constants.MIN_LINE_WIDTH,
-            maxThickness = Constants.MAX_LINE_WIDTH,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(horizontal = 40.dp, vertical = 20.dp)
-                .height(30.dp)
+                .height(100.dp)
                 .fillMaxWidth()
         )
     }
 }
 
 @Composable
-fun PreviewFrame(modifier: Modifier, backFrame: Frame?) {
+fun FrameList(
+    frames: List<Frame>,
+    frameSize: IntSize,
+    selected: Int,
+    onClick: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val frameRatio by mutableFloatStateOf(frameSize.width.toFloat() / frameSize.height.toFloat())
+    // Добавляем пустой фрейм для отображения в ленте
+    val displayedFrames = frames.plus(Frame())
+    Box(
+        modifier
+            .alpha(0.7F)
+            .background(Colors.White)
+    )
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = spacedBy(4.dp),
+        modifier = modifier.fillMaxSize()
+    ) {
+        displayedFrames.forEachIndexed { index, frame ->
+            item(frame.hashCode()) {
+                var frameScaleX by remember { mutableFloatStateOf(0F) }
+                var frameScaleY by remember { mutableFloatStateOf(0F) }
+                Box(
+                    Modifier
+                        .fillMaxHeight()
+                        .aspectRatio(if (frameRatio > 0) frameRatio else 1F)
+                        .onPlaced {
+                            val scaleX = it.size.width.toFloat() / frameSize.width.toFloat()
+                            frameScaleX = scaleX
+                            frameScaleY = it.size.height / frameSize.height.toFloat()
+                        }
+                        .border(
+                            width = if (selected == index) 4.dp else 2.dp,
+                            color = if (selected == index) Colors.Blue else Colors.Gray
+                        )
+                        .clickable(onClick = { onClick.invoke(index) })
+                ) {
+                    Canvas(
+                        Modifier
+                            .graphicsLayer {
+                                this.scaleX = frameScaleX
+                                this.scaleY = frameScaleY
+                                compositingStrategy = CompositingStrategy.Offscreen
+                            }
+                    ) {
+                        frame.data.forEach { path ->
+                            drawPath(
+                                path = path.path,
+                                path.color,
+                                style = Stroke(width = path.lineWidth, cap = StrokeCap.Round),
+                                blendMode = path.blendMode
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BackFrame(modifier: Modifier, backFrame: Frame?) {
     Canvas(modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)) {
         backFrame?.data?.forEach { path ->
             drawPath(
@@ -202,12 +294,12 @@ fun PreviewFrame(modifier: Modifier, backFrame: Frame?) {
 }
 
 @Composable
-fun PlayerCanvas(
+fun AppCanvas(
     modifier: Modifier = Modifier,
-    frame: Frame,
+    canvasState: CanvasState
 ) {
     Canvas(modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)) {
-        frame.data.forEach { path ->
+        canvasState.allCanvasPath.forEach { path ->
             drawPath(
                 path = path.path,
                 path.color,
@@ -215,26 +307,7 @@ fun PlayerCanvas(
                 blendMode = path.blendMode
             )
         }
-    }
-}
-
-@Composable
-fun CurrentFrame(
-    modifier: Modifier = Modifier,
-    pathList: List<DrawablePath>,
-    actualPath: DrawablePath?
-) {
-    Canvas(modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)) {
-
-        pathList.forEach { path ->
-            drawPath(
-                path = path.path,
-                path.color,
-                style = Stroke(width = path.lineWidth, cap = StrokeCap.Round),
-                blendMode = path.blendMode
-            )
-        }
-        actualPath?.let { path ->
+        canvasState.drawingPath?.let { path ->
             drawPath(
                 path = path.path,
                 color = path.color,
@@ -248,7 +321,7 @@ fun CurrentFrame(
                 Colors.Gray,
                 radius = path.lineWidth * 0.75F,
                 center = path.path.getEndPoint(),
-                style = Stroke(width = 8F)
+                style = Stroke(width = 12F)
             )
         }
     }

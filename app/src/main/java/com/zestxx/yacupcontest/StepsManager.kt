@@ -1,19 +1,27 @@
 package com.zestxx.yacupcontest
 
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
+@Stable
 class StepsManager(private val canvasState: CanvasState) {
-    private val frames = mutableListOf<Frame>()
-    private var activeFrameIndex = 0
+    var activeFrameIndex by mutableIntStateOf(0)
+    val frames = mutableStateListOf<Frame>()
     var backFrame by mutableStateOf<Frame?>(null)
+        private set
 
-    val canUndo: Boolean
-        get() = activeFrameIndex != 0
+    var frameCount by mutableIntStateOf(0)
+        private set
 
-    val canRedo: Boolean
-        get() = activeFrameIndex < frames.size
+    var canUndo by mutableStateOf(false)
+        private set
+
+    var canRedo by mutableStateOf(false)
+        private set
 
     fun getFrames(): List<Frame> = frames
 
@@ -23,6 +31,12 @@ class StepsManager(private val canvasState: CanvasState) {
         } else null
     }
 
+    fun showStep(step: Int) {
+        canvasState.clear()
+        activeFrameIndex = step
+        updateState()
+    }
+
     fun getPreviousFrame(): Frame? {
         return if (activeFrameIndex > 0 && frames.isNotEmpty()) {
             frames[activeFrameIndex - 1]
@@ -30,6 +44,7 @@ class StepsManager(private val canvasState: CanvasState) {
     }
 
     fun undo() {
+        if (activeFrameIndex == 0) return
         saveChanges()
         canvasState.clear()
         activeFrameIndex -= 1
@@ -37,27 +52,44 @@ class StepsManager(private val canvasState: CanvasState) {
     }
 
     fun redo() {
+        if (activeFrameIndex == frames.size) return
         saveChanges()
         canvasState.clear()
         activeFrameIndex += 1
         updateState()
     }
 
-    fun saveFrame(createNew: Boolean = true) {
-        if (canvasState.canvasPathList.isEmpty()) return
-        val frameIndex = frames.size
-        val newFrame = Frame(canvasState.canvasPathList.toList())
-        frames.add(frameIndex, newFrame)
+    fun saveFrame(explicit: Boolean = true) {
+        val newFrame = canvasState.createFrame()
+        frames.add(newFrame)
+        frameCount = frames.size
         canvasState.clear()
-        if (createNew) {
+        if (explicit) {
             activeFrameIndex = frames.size
             updateState()
         }
     }
 
-    private fun saveChanges() {
+    fun dropFrame() {
+        frames.removeAt(activeFrameIndex)
+        activeFrameIndex = frames.size
+        updateState()
+    }
+
+    fun copyFrame() {
+        val currentFrame = frames[activeFrameIndex]
+        val newFrame = Frame(currentFrame.data.toList())
+        frames.add(newFrame)
+        activeFrameIndex = frames.size
+        updateState()
+    }
+
+    fun saveChanges() {
         when {
-            activeFrameIndex == frames.size -> saveFrame(false)
+            activeFrameIndex == frames.size && canvasState.allCanvasPath.isNotEmpty() -> {
+                saveFrame(false)
+            }
+
             else -> updateFrame(activeFrameIndex)
         }
     }
@@ -65,11 +97,14 @@ class StepsManager(private val canvasState: CanvasState) {
     private fun updateState() {
         canvasState.setCanvasPath(getActualFrame()?.data ?: emptyList())
         backFrame = getPreviousFrame()
+        canUndo = activeFrameIndex != 0
+        canRedo = activeFrameIndex < frames.size
     }
 
     private fun updateFrame(index: Int) {
+        if (index < 0 || index == frames.size) return
         val frame = frames[index]
-        val canvasPathList = canvasState.canvasPathList.toList()
+        val canvasPathList = canvasState.allCanvasPath.toList()
         if (frame.data != canvasPathList) {
             frames[index] = Frame(canvasPathList)
         }

@@ -9,54 +9,66 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.copy
+import androidx.compose.ui.unit.IntSize
 import com.zestxx.yacupcontest.ui.theme.Colors
 import com.zestxx.yacupcontest.util.UndoManager
 
 class CanvasState() {
     private val path = Path()
+    var size by mutableStateOf(IntSize(0, 0))
     var mode by mutableStateOf(Mode.DRAW)
     var color by mutableStateOf(Colors.palette.first())
     var lineWidth by mutableFloatStateOf(Constants.MAX_LINE_WIDTH / 2)
 
-    var canvasPathList by mutableStateOf<List<DrawablePath>>(emptyList())
-    var currentPath by mutableStateOf<DrawablePath?>(DrawablePath(Path()))
+    var allCanvasPath by mutableStateOf<List<DrawablePath>>(emptyList())
+    var drawingPath by mutableStateOf<DrawablePath?>(DrawablePath(Path()))
     val undoManager = UndoManager()
 
+    fun initSize(size: IntSize) {
+        if (this.size.width == 0 && this.size.height == 0){
+            this.size = size
+        }
+    }
+
     fun setCanvasPath(pathList: List<DrawablePath>) {
-        canvasPathList = undoManager.setSteps(pathList)
+        allCanvasPath = undoManager.setSteps(pathList)
     }
 
     fun updateLine(x: Float, y: Float) {
         path.lineTo(x, y)
-        currentPath = currentPath?.update(path.copy())
+        drawingPath = drawingPath?.update(path.copy())
     }
 
     fun saveStep() {
-        currentPath?.let {
-            canvasPathList = undoManager.saveStep(it)
+        drawingPath?.let {
+            allCanvasPath = undoManager.saveStep(it)
         }
         path.reset()
-        currentPath = null
+        drawingPath = null
     }
 
     fun undo() {
-        canvasPathList = emptyList()
-        canvasPathList = undoManager.undo()
+        allCanvasPath = emptyList()
+        allCanvasPath = undoManager.undo()
     }
 
     fun redo() {
-        canvasPathList = emptyList()
-        canvasPathList = undoManager.redo()
+        allCanvasPath = emptyList()
+        allCanvasPath = undoManager.redo()
     }
 
     fun startPoint(x: Float, y: Float) {
-        createNewPath()
         path.moveTo(x, y)
+        createNewPath()
     }
 
     fun clear() {
-        canvasPathList = emptyList()
+        allCanvasPath = emptyList()
         undoManager.reset()
+    }
+
+    fun createFrame(): Frame {
+        return Frame(allCanvasPath.toList())
     }
 
     private fun createNewPath() {
@@ -65,7 +77,7 @@ class CanvasState() {
         } else {
             BlendMode.Clear
         }
-        currentPath = DrawablePath(path, color, lineWidth, blendMode)
+        drawingPath = DrawablePath(path, color, lineWidth, blendMode)
     }
 }
 
