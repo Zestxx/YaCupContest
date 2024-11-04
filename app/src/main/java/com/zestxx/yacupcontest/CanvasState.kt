@@ -1,20 +1,29 @@
 package com.zestxx.yacupcontest
 
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.copy
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntSize
 import com.zestxx.yacupcontest.ui.theme.Colors
 import com.zestxx.yacupcontest.util.UndoManager
 
 class CanvasState() {
     private val path = Path()
+    private val undoManager = UndoManager()
+
+    val canUndo
+        get() = undoManager.canUndo
+
+    val canRedo
+        get() = undoManager.canRedo
+
     var size by mutableStateOf(IntSize(0, 0))
     var mode by mutableStateOf(Mode.DRAW)
     var color by mutableStateOf(Colors.palette.first())
@@ -22,10 +31,9 @@ class CanvasState() {
 
     var allCanvasPath by mutableStateOf<List<DrawablePath>>(emptyList())
     var drawingPath by mutableStateOf<DrawablePath?>(DrawablePath(Path()))
-    val undoManager = UndoManager()
 
     fun initSize(size: IntSize) {
-        if (this.size.width == 0 && this.size.height == 0){
+        if (this.size.width == 0 && this.size.height == 0) {
             this.size = size
         }
     }
@@ -81,7 +89,14 @@ class CanvasState() {
     }
 }
 
-@Composable
-fun rememberCanvasState(): CanvasState {
-    return remember { CanvasState() }
+fun Modifier.bindToCanvas(canvasState: CanvasState): Modifier {
+    return this.pointerInput(true) {
+        detectDragGestures(
+            onDragStart = { offset -> canvasState.startPoint(offset.x, offset.y) },
+            onDrag = { change, dragAmount ->
+                canvasState.updateLine(change.position.x, change.position.y)
+            },
+            onDragEnd = { canvasState.saveStep() }
+        )
+    }
 }

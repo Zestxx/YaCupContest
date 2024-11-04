@@ -6,6 +6,12 @@ class UndoManager {
     private val pathStack = mutableListOf<DrawablePath>()
     private val undoStack = mutableListOf<DrawablePath>()
 
+    val canUndo
+        get() = pathStack.isNotEmpty()
+
+    val canRedo
+        get() = undoStack.isNotEmpty()
+
     fun setSteps(pathList: List<DrawablePath>): MutableList<DrawablePath> {
         pathStack.addAll(pathList)
         undoStack.clear()

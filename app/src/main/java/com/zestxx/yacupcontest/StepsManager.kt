@@ -17,11 +17,8 @@ class StepsManager(private val canvasState: CanvasState) {
     var frameCount by mutableIntStateOf(0)
         private set
 
-    var canUndo by mutableStateOf(false)
-        private set
-
-    var canRedo by mutableStateOf(false)
-        private set
+    val isNewFrame
+        get() = activeFrameIndex == frames.size
 
     fun getFrames(): List<Frame> = frames
 
@@ -71,6 +68,7 @@ class StepsManager(private val canvasState: CanvasState) {
     }
 
     fun dropFrame() {
+        if (activeFrameIndex >= frames.size) return
         frames.removeAt(activeFrameIndex)
         activeFrameIndex = frames.size
         updateState()
@@ -97,8 +95,6 @@ class StepsManager(private val canvasState: CanvasState) {
     private fun updateState() {
         canvasState.setCanvasPath(getActualFrame()?.data ?: emptyList())
         backFrame = getPreviousFrame()
-        canUndo = activeFrameIndex != 0
-        canRedo = activeFrameIndex < frames.size
     }
 
     private fun updateFrame(index: Int) {
