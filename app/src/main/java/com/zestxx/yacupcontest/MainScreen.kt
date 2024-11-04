@@ -9,6 +9,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -40,13 +43,22 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.zestxx.yacupcontest.composnents.ActionsHeader
 import com.zestxx.yacupcontest.composnents.ColorPalette
 import com.zestxx.yacupcontest.composnents.FrameList
 import com.zestxx.yacupcontest.composnents.LineThicknessSlider
 import com.zestxx.yacupcontest.composnents.Tools
-import com.zestxx.yacupcontest.ui.theme.Colors
+import com.zestxx.yacupcontest.models.Constants
+import com.zestxx.yacupcontest.models.Frame
+import com.zestxx.yacupcontest.state.CanvasState
+import com.zestxx.yacupcontest.state.ClearAllClick
+import com.zestxx.yacupcontest.state.StateManager
+import com.zestxx.yacupcontest.state.bindToCanvas
+import com.zestxx.yacupcontest.state.rememberStateManager
+import com.zestxx.yacupcontest.theme.AppTheme
+import com.zestxx.yacupcontest.ui.theme.Palette
 
 @Composable
 fun MainScreen(modifier: Modifier = Modifier) {
@@ -54,14 +66,14 @@ fun MainScreen(modifier: Modifier = Modifier) {
 
     Box(
         modifier
-            .background(Colors.Black)
+            .background(AppTheme.color.background)
+            .navigationBarsPadding()
             .padding(16.dp)
     ) {
         Column(
             Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding()
         ) {
             ActionsHeader(
                 state = stateManager.actionsState,
@@ -88,78 +100,22 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     .height(32.dp)
             )
         }
+        Text(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = 12.dp),
+            text = (stateManager.framesManager.frameCount).toString(),
+            fontSize = 24.sp
+        )
 
-//        Column(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(16.dp),
-//        ) {
-//            Row(verticalAlignment = Alignment.CenterVertically) {
-//                Button(
-//                    onClick = {
-//                        canvasState.mode = if (canvasState.mode == Mode.DRAW) {
-//                            Mode.ERASE
-//                        } else {
-//                            Mode.DRAW
-//                        }
-//                    }
-//                ) {
-//                    Text(canvasState.mode.name)
-//                }
-//                Spacer(Modifier.width(8.dp))
-//                Row(Modifier.wrapContentSize(), horizontalArrangement = spacedBy(6.dp)) {
-//                    Colors.palette.fastForEach { color ->
-//                        Box(
-//                            modifier = Modifier
-//                                .size(36.dp)
-//                                .clip(CircleShape)
-//                                .background(color)
-//                                .clickable(onClick = { canvasState.color = color })
-//                        )
-//                    }
-//                }
-//
-//            }
-//            Spacer(Modifier.height(8.dp))
-//            Row(horizontalArrangement = spacedBy(8.dp)) {
-//                Button(onClick = { canvasState.undo() }) { Text("Undo") }
-//                Button(onClick = { canvasState.redo() }) { Text("Redo") }
-//                Button(onClick = { stepsManager.saveFrame() }) { Text("New") }
-//                Button(
-//                    onClick = {
-//                        if (!animator.isPlaying) {
-//                            stepsManager.saveChanges()
-//                            animator.play(coroutineScope)
-//                        } else {
-//                            animator.stop()
-//                        }
-//                    },
-//                    enabled = stepsManager.frameCount > 0
-//                ) {
-//                    if (!animator.isPlaying) {
-//                        Text("Play")
-//                    } else {
-//                        Text("Stop")
-//                    }
-//                }
-//            }
-//            Row(horizontalArrangement = spacedBy(8.dp)) {
-//                Button(
-//                    onClick = { stepsManager.undo() },
-//                    enabled = stepsManager.canUndo
-//                ) {
-//                    Image(imageVector = Icons.Default.ArrowBack, null)
-//                }
-//
-//                Button(
-//                    onClick = { stepsManager.redo() },
-//                    enabled = stepsManager.canRedo
-//                ) {
-//                    Image(imageVector = Icons.Default.ArrowForward, null)
-//                }
-//            }
-//        }
-
+        Icon(
+            painterResource(R.drawable.ic_clear),
+            contentDescription = "ClearAll",
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .clickable { stateManager.onAction(ClearAllClick) },
+            tint = AppTheme.color.iconTint
+        )
     }
 }
 
@@ -187,21 +143,29 @@ fun DrawableArea(
         )
 
         var thickness by remember { mutableFloatStateOf(Constants.MAX_LINE_WIDTH / 2) }
-        LineThicknessSlider(
-            thickness = thickness,
-            color = stateManager.canvasState.color,
-            onThicknessChange = {
-                thickness = it
-                stateManager.canvasState.lineWidth = Constants.MAX_LINE_WIDTH - it
-            },
-            minThickness = Constants.MIN_LINE_WIDTH,
-            maxThickness = Constants.MAX_LINE_WIDTH,
-            modifier = Modifier
-                .padding(horizontal = 40.dp, vertical = 20.dp)
-                .height(20.dp)
-                .fillMaxWidth()
-                .zIndex(1F)
-        )
+        AnimatedVisibility(
+            !stateManager.isPaletteVisible,
+            modifier = Modifier.align(Alignment.BottomStart),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            LineThicknessSlider(
+                thickness = thickness,
+                color = stateManager.canvasState.color,
+                onThicknessChange = {
+                    thickness = it
+                    stateManager.canvasState.lineWidth = Constants.MAX_LINE_WIDTH - it
+                },
+                minThickness = Constants.MIN_LINE_WIDTH,
+                maxThickness = Constants.MAX_LINE_WIDTH,
+                modifier = Modifier
+                    .padding(horizontal = 40.dp, vertical = 20.dp)
+                    .height(20.dp)
+                    .fillMaxWidth()
+                    .zIndex(1F)
+            )
+        }
+
 
         AppCanvas(
             modifier = Modifier.fillMaxSize(),
@@ -211,20 +175,21 @@ fun DrawableArea(
         AnimatedVisibility(!stateManager.animator.isPlaying, enter = fadeIn(), exit = fadeOut()) {
             BackFrame(
                 modifier = Modifier.fillMaxSize(),
-                backFrame = stateManager.stepsManager.backFrame
+                backFrame = stateManager.framesManager.backFrame
             )
         }
         AnimatedVisibility(
-            stateManager.isLayerListVisible,
+            stateManager.isLayerListVisible && !stateManager.animator.isPlaying,
             enter = slideInVertically() + fadeIn(),
             exit = slideOutVertically() + fadeOut()
         ) {
             FrameList(
-                stepsManager = stateManager.stepsManager,
+                framesManager = stateManager.framesManager,
                 frameSize = stateManager.canvasState.size,
                 modifier = Modifier
                     .height(100.dp)
                     .fillMaxWidth()
+                    .zIndex(10F)
             )
         }
 
@@ -295,7 +260,7 @@ fun AppCanvas(
                 blendMode = path.blendMode
             )
             drawCircle(
-                Colors.Gray,
+                Palette.Gray,
                 radius = path.lineWidth * 0.75F,
                 center = path.path.getEndPoint(),
                 style = Stroke(width = 12F)

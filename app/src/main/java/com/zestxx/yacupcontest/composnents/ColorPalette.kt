@@ -31,11 +31,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.zestxx.yacupcontest.ColorSelected
-import com.zestxx.yacupcontest.FullPalletClick
 import com.zestxx.yacupcontest.R
-import com.zestxx.yacupcontest.UiAction
-import com.zestxx.yacupcontest.ui.theme.Colors
+import com.zestxx.yacupcontest.state.ColorSelected
+import com.zestxx.yacupcontest.state.FullPalletClick
+import com.zestxx.yacupcontest.state.UiAction
+import com.zestxx.yacupcontest.theme.AppTheme
+import com.zestxx.yacupcontest.ui.theme.Palette
 
 
 @Composable
@@ -80,7 +81,7 @@ fun ColorFullPalette(
     val rows = colors.chunked(5)
     Column(
         modifier = modifier
-            .background(Colors.Gray.copy(alpha = 0.5F), shape = RoundedCornerShape(8.dp))
+            .background(Palette.Gray.copy(alpha = 0.5F), shape = RoundedCornerShape(8.dp))
             .padding(horizontal = 18.dp, vertical = 8.dp)
     ) {
         rows.forEach { rowColors ->
@@ -92,7 +93,7 @@ fun ColorFullPalette(
             ) {
                 rowColors.forEach { color ->
                     val borderColor = if (color.value == selectedColor.value) {
-                        Colors.LimeGreen
+                        AppTheme.color.selectedTint
                     } else {
                         color
                     }
@@ -124,7 +125,7 @@ fun ColorShortPalette(
 ) {
     Column(
         modifier = modifier
-            .background(Colors.Gray.copy(alpha = 0.5F), shape = RoundedCornerShape(8.dp))
+            .background(Palette.Gray.copy(alpha = 0.5F), shape = RoundedCornerShape(8.dp))
             .padding(horizontal = 18.dp, vertical = 8.dp)
     ) {
         Row(
@@ -136,7 +137,11 @@ fun ColorShortPalette(
             Icon(
                 painterResource(R.drawable.ic_palette),
                 contentDescription = "Palette",
-                tint = if (paletteState.isFullPaletteVisible) Colors.LimeGreen else Colors.White,
+                tint = if (paletteState.isFullPaletteVisible) {
+                    AppTheme.color.selectedTint
+                } else {
+                    AppTheme.color.iconTint
+                },
                 modifier = Modifier
                     .clickable(
                         onClick = { onAction.invoke(FullPalletClick) },
@@ -150,7 +155,7 @@ fun ColorShortPalette(
                     !paletteState.isFullPaletteVisible &&
                     color.value == paletteState.selectedColor.value
                 ) {
-                    Colors.LimeGreen
+                    Palette.LimeGreen
                 } else {
                     color
                 }
@@ -179,13 +184,6 @@ data class PaletteState(
 @Preview
 @Composable
 private fun PalettePreview() {
-//    ColorFullPalette(
-//        palette,
-//        onColorSelected = {},
-//        modifier = Modifier
-//            .wrapContentWidth()
-//            .wrapContentHeight()
-//    )
     Box(
         Modifier
             .fillMaxSize()

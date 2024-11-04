@@ -1,21 +1,27 @@
-package com.zestxx.yacupcontest
+package com.zestxx.yacupcontest.state
 
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.zestxx.yacupcontest.models.Frame
+import kotlin.collections.isNotEmpty
+import kotlin.collections.toList
+import kotlin.ranges.until
 
 @Stable
-class StepsManager(private val canvasState: CanvasState) {
+class FramesManager(private val canvasState: CanvasState) {
     var activeFrameIndex by mutableIntStateOf(0)
     val frames = mutableStateListOf<Frame>()
     var backFrame by mutableStateOf<Frame?>(null)
         private set
 
-    var frameCount by mutableIntStateOf(0)
-        private set
+    val frameCount by derivedStateOf {
+        frames.size
+    }
 
     val isNewFrame
         get() = activeFrameIndex == frames.size
@@ -40,26 +46,9 @@ class StepsManager(private val canvasState: CanvasState) {
         } else null
     }
 
-    fun undo() {
-        if (activeFrameIndex == 0) return
-        saveChanges()
-        canvasState.clear()
-        activeFrameIndex -= 1
-        updateState()
-    }
-
-    fun redo() {
-        if (activeFrameIndex == frames.size) return
-        saveChanges()
-        canvasState.clear()
-        activeFrameIndex += 1
-        updateState()
-    }
-
     fun saveFrame(explicit: Boolean = true) {
         val newFrame = canvasState.createFrame()
         frames.add(newFrame)
-        frameCount = frames.size
         canvasState.clear()
         if (explicit) {
             activeFrameIndex = frames.size
@@ -75,21 +64,34 @@ class StepsManager(private val canvasState: CanvasState) {
     }
 
     fun copyFrame() {
-        val currentFrame = frames[activeFrameIndex]
-        val newFrame = Frame(currentFrame.data.toList())
-        frames.add(newFrame)
-        activeFrameIndex = frames.size
+        saveChanges()
+        val currentFrame = runCatching {
+            frames[activeFrameIndex]
+        }.getOrNull()
+
+        val newFrame = if (currentFrame == null) {
+            Frame(canvasState.allCanvasPath.toList())
+        } else {
+            Frame(currentFrame.data.toList())
+        }
+        frames.add(activeFrameIndex, newFrame)
+        activeFrameIndex += 1
         updateState()
     }
 
     fun saveChanges() {
         when {
-            activeFrameIndex == frames.size && canvasState.allCanvasPath.isNotEmpty() -> {
-                saveFrame(false)
-            }
+            activeFrameIndex == frames.size
+                    && canvasState.allCanvasPath.isNotEmpty() -> saveFrame(false)
 
-            else -> updateFrame(activeFrameIndex)
+            else -> runCatching { updateFrame(activeFrameIndex) }
         }
+    }
+
+    fun clearAll() {
+        canvasState.clear()
+        frames.clear()
+        updateState()
     }
 
     private fun updateState() {
@@ -106,4 +108,5 @@ class StepsManager(private val canvasState: CanvasState) {
         }
         canvasState.clear()
     }
+
 }

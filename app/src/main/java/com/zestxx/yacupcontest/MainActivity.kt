@@ -6,9 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.zestxx.yacupcontest.ui.theme.YaCupContestTheme
+import com.zestxx.yacupcontest.theme.YaCupContestTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

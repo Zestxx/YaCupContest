@@ -26,25 +26,25 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.zestxx.yacupcontest.Frame
-import com.zestxx.yacupcontest.StepsManager
-import com.zestxx.yacupcontest.ui.theme.Colors
+import com.zestxx.yacupcontest.state.FramesManager
+import com.zestxx.yacupcontest.models.Frame
+import com.zestxx.yacupcontest.ui.theme.Palette
 
 @Composable
 fun FrameList(
-    stepsManager: StepsManager,
+    framesManager: FramesManager,
     frameSize: IntSize,
     modifier: Modifier = Modifier
 ) {
-    val frames = stepsManager.frames
+    val frames = framesManager.frames
     val frameRatio by mutableFloatStateOf(frameSize.width.toFloat() / frameSize.height.toFloat())
     // Добавляем пустой фрейм для отображения в ленте
     val displayedFrames = frames.plus(Frame())
-    val selected = stepsManager.activeFrameIndex
+    val selected = framesManager.activeFrameIndex
     Box(
         modifier
             .alpha(0.7F)
-            .background(Colors.White)
+            .background(Palette.White)
     )
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
@@ -66,12 +66,12 @@ fun FrameList(
                         }
                         .border(
                             width = if (selected == index) 2.dp else 1.dp,
-                            color = if (selected == index) Colors.Orange else Colors.Gray
+                            color = if (selected == index) Palette.Orange else Palette.Gray
                         )
                         .clickable(
                             onClick = {
-                                stepsManager.saveChanges()
-                                stepsManager.showStep(index)
+                                framesManager.saveChanges()
+                                framesManager.showStep(index)
                             }
                         )
                 ) {

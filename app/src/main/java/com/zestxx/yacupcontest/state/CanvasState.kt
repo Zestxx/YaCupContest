@@ -1,6 +1,7 @@
-package com.zestxx.yacupcontest
+package com.zestxx.yacupcontest.state
 
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -11,8 +12,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.copy
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntSize
-import com.zestxx.yacupcontest.ui.theme.Colors
-import com.zestxx.yacupcontest.util.UndoManager
+import com.zestxx.yacupcontest.models.Constants
+import com.zestxx.yacupcontest.models.DrawablePath
+import com.zestxx.yacupcontest.models.Frame
+import com.zestxx.yacupcontest.models.Mode
+import com.zestxx.yacupcontest.ui.theme.Palette
+import kotlin.collections.toList
+import kotlin.let
 
 class CanvasState() {
     private val path = Path()
@@ -26,7 +32,7 @@ class CanvasState() {
 
     var size by mutableStateOf(IntSize(0, 0))
     var mode by mutableStateOf(Mode.DRAW)
-    var color by mutableStateOf(Colors.palette.first())
+    var color by mutableStateOf(Palette.LimeGreen)
     var lineWidth by mutableFloatStateOf(Constants.MAX_LINE_WIDTH / 2)
 
     var allCanvasPath by mutableStateOf<List<DrawablePath>>(emptyList())
@@ -68,6 +74,7 @@ class CanvasState() {
     fun startPoint(x: Float, y: Float) {
         path.moveTo(x, y)
         createNewPath()
+        updateLine(x, y)
     }
 
     fun clear() {
@@ -98,5 +105,8 @@ fun Modifier.bindToCanvas(canvasState: CanvasState): Modifier {
             },
             onDragEnd = { canvasState.saveStep() }
         )
+        detectTapGestures(onTap = { offset ->
+            canvasState.startPoint(offset.x, offset.y)
+        })
     }
 }

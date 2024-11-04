@@ -1,4 +1,4 @@
-package com.zestxx.yacupcontest
+package com.zestxx.yacupcontest.state
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -8,9 +8,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.collections.forEach
+import kotlin.ranges.until
 
 @Stable
-class Animator(private val stepsManager: StepsManager) {
+class Animator(private val framesManager: FramesManager) {
 
     companion object {
         private const val SECOND_IN_MS = 1000L
@@ -26,10 +28,10 @@ class Animator(private val stepsManager: StepsManager) {
     ) {
         playingJob = coroutineScope.launch {
             isPlaying = true
-            val frameCount = stepsManager.frameCount
+            val frameCount = framesManager.frameCount
             do {
                 (0 until frameCount).forEach { index ->
-                    stepsManager.showStep(index)
+                    framesManager.showStep(index)
                     delay(SECOND_IN_MS / fps)
                 }
             } while (autoRepeat)
@@ -39,6 +41,6 @@ class Animator(private val stepsManager: StepsManager) {
     fun stop() {
         isPlaying = false
         playingJob?.cancel()
-        stepsManager.showStep(stepsManager.frameCount)
+        framesManager.showStep(framesManager.frameCount)
     }
 }

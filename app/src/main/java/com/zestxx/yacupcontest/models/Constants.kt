@@ -1,4 +1,4 @@
-package com.zestxx.yacupcontest
+package com.zestxx.yacupcontest.models
 
 object Constants {
     const val MIN_LINE_WIDTH = 5F

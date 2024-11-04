@@ -27,14 +27,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.zestxx.yacupcontest.BrushClick
-import com.zestxx.yacupcontest.ColorsClick
-import com.zestxx.yacupcontest.EraserClick
-import com.zestxx.yacupcontest.PencilClick
 import com.zestxx.yacupcontest.R
-import com.zestxx.yacupcontest.ShapesClick
-import com.zestxx.yacupcontest.UiAction
-import com.zestxx.yacupcontest.ui.theme.Colors
+import com.zestxx.yacupcontest.state.ColorsClick
+import com.zestxx.yacupcontest.state.EraserClick
+import com.zestxx.yacupcontest.state.PencilClick
+import com.zestxx.yacupcontest.state.UiAction
+import com.zestxx.yacupcontest.theme.AppTheme
+import com.zestxx.yacupcontest.ui.theme.Palette
 
 @Composable
 fun Tools(state: ToolsState, onAction: (UiAction) -> Unit, modifier: Modifier = Modifier) {
@@ -55,27 +54,22 @@ fun Tools(state: ToolsState, onAction: (UiAction) -> Unit, modifier: Modifier = 
                     painterResource(R.drawable.ic_pencil),
                     contentDescription = "Pencil",
                     modifier = itemsModifier.clickable { onAction.invoke(PencilClick) },
-                    tint = if (state.selectedTool == Tool.Pencil) Colors.LimeGreen else Colors.White
+                    tint = if (state.selectedTool == Tool.Pencil) {
+                        AppTheme.color.selectedTint
+                    } else {
+                        AppTheme.color.iconTint
+                    }
                 )
-//                Icon(
-//                    painterResource(R.drawable.ic_brush),
-//                    contentDescription = "Brush",
-//                    modifier = itemsModifier.clickable { onAction.invoke(BrushClick) },
-//                    tint = if (state.selectedTool == Tool.Brush) Colors.LimeGreen else Colors.White
-//                )
                 Icon(
                     painterResource(R.drawable.ic_eraser),
                     contentDescription = "Eraser",
                     modifier = itemsModifier.clickable { onAction.invoke(EraserClick) },
-                    tint = if (state.selectedTool == Tool.Eraser) Colors.LimeGreen else Colors.White
+                    tint = if (state.selectedTool == Tool.Eraser) {
+                        AppTheme.color.selectedTint
+                    } else {
+                        AppTheme.color.iconTint
+                    }
                 )
-//                Icon(
-//                    painterResource(R.drawable.ic_shapes),
-//                    contentDescription = "Shapes",
-//                    modifier = itemsModifier.clickable { ShapesClick },
-//                    tint = if (state.selectedTool == Tool.Shapes) Colors.LimeGreen else Colors.White
-//                )
-
                 Box(
                     itemsModifier
                         .padding(4.dp)
@@ -83,7 +77,7 @@ fun Tools(state: ToolsState, onAction: (UiAction) -> Unit, modifier: Modifier = 
                         .border(
                             width = 1.dp,
                             color = if (state.selectedTool == Tool.Colors) {
-                                Colors.LimeGreen
+                                AppTheme.color.selectedTint
                             } else {
                                 state.selectedColor
                             },
@@ -115,7 +109,7 @@ sealed interface Tool {
 @Composable
 private fun ToolsPreview() {
     Tools(
-        state = ToolsState(Colors.Orange, Tool.Shapes),
+        state = ToolsState(Palette.Orange, Tool.Shapes),
         onAction = {},
         Modifier
             .fillMaxWidth()

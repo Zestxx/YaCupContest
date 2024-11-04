@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.zestxx.yacupcontest.ui.theme.Colors
+import com.zestxx.yacupcontest.ui.theme.Palette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,14 +46,14 @@ fun LineThicknessSlider(
                 SliderDefaults.Thumb(
                     interactionSource = remember { MutableInteractionSource() },
                     thumbSize = DpSize(20.dp, 20.dp),
-                    colors = SliderDefaults.colors().copy(thumbColor = Colors.White)
+                    colors = SliderDefaults.colors().copy(thumbColor = Palette.White)
                 )
             },
             track = {
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .background(Colors.Gray.copy(alpha = 0.2F))
+                        .background(Palette.Gray.copy(alpha = 0.2F))
                 ) {
                     BatShape(color = color)
                 }
@@ -61,7 +61,6 @@ fun LineThicknessSlider(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .zIndex(1F)
         )
 
     }
@@ -84,7 +83,7 @@ private fun DrawScope.drawBatShape(startColor: Color) {
     val gradientBrush = Brush.horizontalGradient(
         colors = listOf(
             startColor,
-            Colors.White
+            Palette.White
         )
     )
     drawPath(

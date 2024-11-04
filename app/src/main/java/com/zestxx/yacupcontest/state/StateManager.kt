@@ -1,4 +1,4 @@
-package com.zestxx.yacupcontest
+package com.zestxx.yacupcontest.state
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -12,11 +12,13 @@ import com.zestxx.yacupcontest.composnents.ActionHeaderState
 import com.zestxx.yacupcontest.composnents.PaletteState
 import com.zestxx.yacupcontest.composnents.Tool
 import com.zestxx.yacupcontest.composnents.ToolsState
+import com.zestxx.yacupcontest.models.Mode
 import kotlinx.coroutines.CoroutineScope
+import kotlin.collections.isNotEmpty
 
 class StateManager(
     val canvasState: CanvasState,
-    val stepsManager: StepsManager,
+    val framesManager: FramesManager,
     val animator: Animator,
     val coroutineScope: CoroutineScope,
 ) {
@@ -39,7 +41,7 @@ class StateManager(
         ActionHeaderState(
             isUndoEnabled = canvasState.canUndo,
             isRedoEnabled = canvasState.canRedo,
-            isPlayEnabled = !animator.isPlaying && stepsManager.frameCount > 0,
+            isPlayEnabled = !animator.isPlaying && framesManager.frameCount > 0,
             isStopEnabled = animator.isPlaying,
             isVisible = !animator.isPlaying
         )
@@ -57,53 +59,43 @@ class StateManager(
             UndoClick -> canvasState.undo()
             RedoClick -> canvasState.redo()
             PlayClick -> {
-                stepsManager.saveChanges()
+                framesManager.saveChanges()
                 animator.play(coroutineScope)
             }
 
             StopClick -> animator.stop()
-            AddNewClick -> stepsManager.saveFrame()
+            AddNewClick -> framesManager.saveFrame()
             DeleteClick -> {
-                if (canvasState.allCanvasPath.isNotEmpty() && stepsManager.isNewFrame) {
+                if (canvasState.allCanvasPath.isNotEmpty() && framesManager.isNewFrame) {
                     canvasState.clear()
                 } else {
-                    stepsManager.dropFrame()
+                    framesManager.dropFrame()
                 }
             }
 
-            LayersClick -> {
-                isLayerListVisible = !isLayerListVisible
-            }
-
+            LayersClick -> isLayerListVisible = !isLayerListVisible
+            CopyClick -> framesManager.copyFrame()
             PencilClick -> {
                 selectedTool = Tool.Pencil
                 canvasState.mode = Mode.DRAW
+                isPaletteVisible = false
             }
 
-            BrushClick -> {
-                selectedTool = Tool.Brush
-            }
-
+            BrushClick -> selectedTool = Tool.Brush
             EraserClick -> {
                 selectedTool = Tool.Eraser
                 canvasState.mode = Mode.ERASE
+                isPaletteVisible = false
             }
 
-            ShapesClick -> {
-                selectedTool = Tool.Shapes
+            ShapesClick -> selectedTool = Tool.Shapes
+            ColorsClick -> isPaletteVisible = !isPaletteVisible
+            FullPalletClick -> isFullPaletteVisible = !isFullPaletteVisible
+            ClearAllClick -> {
+                framesManager.clearAll()
             }
 
-            ColorsClick -> {
-                isPaletteVisible = !isPaletteVisible
-            }
-
-            FullPalletClick -> {
-                isFullPaletteVisible = !isFullPaletteVisible
-            }
-
-            is ColorSelected -> {
-                canvasState.color = action.color
-            }
+            is ColorSelected -> canvasState.color = action.color
         }
     }
 
@@ -115,8 +107,8 @@ class StateManager(
 @Composable
 fun rememberStateManager(): StateManager {
     val canvasState = remember { CanvasState() }
-    val stepsManager = remember { StepsManager(canvasState) }
-    val animator = remember { Animator(stepsManager) }
+    val framesManager = remember { FramesManager(canvasState) }
+    val animator = remember { Animator(framesManager) }
     val coroutineScope = rememberCoroutineScope()
-    return remember { StateManager(canvasState, stepsManager, animator, coroutineScope) }
+    return remember { StateManager(canvasState, framesManager, animator, coroutineScope) }
 }

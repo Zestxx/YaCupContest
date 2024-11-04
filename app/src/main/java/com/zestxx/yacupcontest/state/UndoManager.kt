@@ -1,6 +1,9 @@
-package com.zestxx.yacupcontest.util
+package com.zestxx.yacupcontest.state
 
-import com.zestxx.yacupcontest.DrawablePath
+import com.zestxx.yacupcontest.models.DrawablePath
+import kotlin.collections.isNotEmpty
+import kotlin.collections.last
+import kotlin.collections.removeLast
 
 class UndoManager {
     private val pathStack = mutableListOf<DrawablePath>()

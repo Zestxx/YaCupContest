@@ -1,4 +1,4 @@
-package com.zestxx.yacupcontest
+package com.zestxx.yacupcontest.models
 
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
